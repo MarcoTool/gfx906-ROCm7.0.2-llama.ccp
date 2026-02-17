@@ -1,6 +1,6 @@
 # llama.cpp Docker for AMD MI50 (gfx906) + ROCm 7.0.2
 
-Docker-based llama.cpp deployment for AMD gfx906 GPUs (**Instinct MI50**, **Radeon VII**), with a critical fix for **SSM/Mamba model support** (e.g., Qwen3-Next-80B-A3B).
+Docker-based llama.cpp deployment for AMD gfx906 GPUs (**Instinct MI50**, **Radeon VII**), with a fix for **SSM/Mamba model support** (e.g., Qwen3-Next-80B-A3B).
 
 ## The Problem
 
@@ -197,3 +197,4 @@ This fix applies to all **gfx906** devices:
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
