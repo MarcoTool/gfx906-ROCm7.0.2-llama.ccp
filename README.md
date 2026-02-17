@@ -15,8 +15,6 @@ This affects any model using SSM architecture (Qwen3-Next, Jamba, etc.) but NOT 
 
 ## The Fix
 
-The Dockerfile implements a 3-layer fix:
-
 ### 1. Replace rocBLAS runtime with 6.3 version
 
 The 7.0.2 `librocblas.so` has TRSM kernels compiled without gfx906 support. These are **embedded in the .so binary**, not in TensileLibrary files. Simply copying TensileLibrary `.co`/`.hsaco` files from 6.3 does NOT fix this. The runtime itself must be from 6.3.
@@ -197,4 +195,5 @@ This fix applies to all **gfx906** devices:
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
 
