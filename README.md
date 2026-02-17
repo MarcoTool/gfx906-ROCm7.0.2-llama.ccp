@@ -4,7 +4,7 @@ Docker-based llama.cpp deployment for AMD gfx906 GPUs (**Instinct MI50**, **Rade
 
 ## The Problem
 
-ROCm 7.0.2 dropped gfx906 support in rocBLAS. While basic GEMM operations can work with `HSA_OVERRIDE_GFX_VERSION=9.0.6` and patched TensileLibrary files, **TRSM (triangular solve)** operations — used by SSM/Mamba models' `SOLVE_TRI` — fail with:
+ROCm 7.0.2 dropped gfx906 support in rocBLAS. While basic GEMM operations can work with `HSA_OVERRIDE_GFX_VERSION=9.0.6` and patched TensileLibrary files, **TRSM (triangular solve)** operations, used by SSM/Mamba models' `SOLVE_TRI`, fail with:
 
 ```
 rocBLAS error from hip error code: 'hipErrorInvalidDeviceFunction':98
@@ -19,7 +19,7 @@ The Dockerfile implements a 3-layer fix:
 
 ### 1. Replace rocBLAS runtime with 6.3 version
 
-The 7.0.2 `librocblas.so` has TRSM kernels compiled without gfx906 support. These are **embedded in the .so binary**, not in TensileLibrary files. Simply copying TensileLibrary `.co`/`.hsaco` files from 6.3 does NOT fix this — the runtime itself must be from 6.3.
+The 7.0.2 `librocblas.so` has TRSM kernels compiled without gfx906 support. These are **embedded in the .so binary**, not in TensileLibrary files. Simply copying TensileLibrary `.co`/`.hsaco` files from 6.3 does NOT fix this. The runtime itself must be from 6.3.
 
 ### 2. SONAME redirection
 
@@ -68,7 +68,7 @@ ln -sf $(readlink -f /opt/rocm/lib/libamdhip64.so) /opt/rocm/lib/libamdhip64.so.
 
 All benchmarks conducted on MI50 32GB with V420 VBIOS and 140W power cap per GPU.
 
-### Qwen3-Next-80B-A3B-Instruct Q4_K_S — Dual GPU PP
+### Qwen3-Next-80B-A3B-Instruct Q4_K_S / Dual GPU PP
 
 `docker-compose.dual-gpu.yml` | GPU0: 22.5GB VRAM, GPU1: 20.6GB VRAM
 
@@ -83,7 +83,7 @@ All benchmarks conducted on MI50 32GB with V420 VBIOS and 140W power cap per GPU
 - Generation speed stable across context lengths (SSM architecture benefit)
 - Requires rocBLAS 6.3 patch for SOLVE_TRI
 
-### GLM-4.7-Flash Q4_K_M — Single GPU
+### GLM-4.7-Flash Q4_K_M / Single GPU
 
 `docker-compose.single-gpu.yml` | GPU0: ~17.3GB VRAM
 
@@ -112,7 +112,7 @@ All benchmarks conducted on MI50 32GB with V420 VBIOS and 140W power cap per GPU
 docker compose build
 ```
 
-### Run — Single GPU
+### Run: Single GPU
 
 For attention-only models (GLM-4.7-Flash, Qwen3, LLaMA, Mistral, etc.):
 
@@ -122,7 +122,7 @@ cp docker-compose.single-gpu.yml docker-compose.yml
 docker compose up -d
 ```
 
-### Run — Dual GPU Pipeline Parallelism
+### Run: Dual GPU Pipeline Parallelism
 
 For large models or SSM/Mamba models (Qwen3-Next-80B, Jamba, etc.):
 
