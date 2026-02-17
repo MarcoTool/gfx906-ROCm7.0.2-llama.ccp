@@ -130,7 +130,7 @@ docker compose up -d
 
 ### Run: Dual GPU Pipeline Parallelism
 
-For large models or SSM/Mamba models (Qwen3-Next-80B, Jamba, etc.):
+For large models or SSM/Mamba models (Qwen3-Next-80B, etc.):
 
 ```bash
 cp docker-compose.dual-gpu.yml docker-compose.yml
@@ -204,5 +204,6 @@ This fix applies to all **gfx906** devices:
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
 
 
