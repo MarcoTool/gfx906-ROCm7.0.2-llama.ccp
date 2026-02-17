@@ -180,11 +180,9 @@ These approaches were tried and **do NOT fix** the SOLVE_TRI issue:
 
 | Approach | Why it fails |
 |----------|-------------|
-| Copy only `*gfx906*` TensileLibrary files from 6.3 | 7.0.2's runtime can't use 6.3's Tensile format |
-| Replace entire TensileLibrary directory (with .dat index) | TRSM kernels are embedded in librocblas.so, not in TensileLibrary |
-| `--override-tensor ssm_=CPU` | Only moves weight tensors, compute graph still executes SOLVE_TRI on GPU |
-| Patch rocBLAS before compiling llama.cpp | 6.3's dependency chain is incomplete in 7.0.2 env, build produces empty binaries |
-| Create .so.5 symlink without deleting .so.5.0.70002 | `ldconfig` overwrites the symlink back to 7.0.2 |
+| Copy only `*gfx906*` TensileLibrary files from 6.3 | 7.0.2's `librocblas.so` runtime can't use 6.3's Tensile format — the index and code object layout changed between versions |
+| Replace entire TensileLibrary directory (with .dat index) | TRSM kernels are embedded in `librocblas.so` itself, not in TensileLibrary files — replacing external data doesn't affect the compiled-in device code |
+| `--override-tensor ssm_=CPU` | Only moves weight storage to CPU; the compute graph still dispatches SOLVE_TRI to GPU because input activations come from GPU ops |
 
 ## License
 
