@@ -1,0 +1,30 @@
+# Single GPU configuration — for attention-only models (GLM, Qwen3, LLaMA, etc.)
+# Tested: GLM-4.7-Flash Q4_K_M @ 57 tok/s on MI50 32GB (V420, 140W cap)
+services:
+  llama:
+    build: .
+    container_name: llama-server
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+    shm_size: "16g"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./model:/model
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=9.0.6
+      - HSA_XNACK=0
+      - HIP_VISIBLE_DEVICES=0
+    command:
+      - --model
+      - /model/GLM-4.7-Flash-Q4_K_M.gguf
+      - --port
+      - "8080"
+      - --host
+      - "0.0.0.0"
+      - --n-gpu-layers
+      - "999"
+    restart: unless-stopped
