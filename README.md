@@ -1,6 +1,6 @@
 # llama.cpp Docker for AMD MI50 (gfx906) + ROCm 7.0.2
 
-Docker-based llama.cpp deployment for AMD Instinct MI50 (gfx906) GPUs, with a critical fix for **SSM/Mamba model support** (e.g., Qwen3-Next-80B-A3B).
+Docker-based llama.cpp deployment for AMD gfx906 GPUs (**Instinct MI50**, **Radeon VII**), with a critical fix for **SSM/Mamba model support** (e.g., Qwen3-Next-80B-A3B).
 
 ## The Problem
 
@@ -60,6 +60,7 @@ ln -sf $(readlink -f /opt/rocm/lib/libamdhip64.so) /opt/rocm/lib/libamdhip64.so.
 | OS | Ubuntu 22.04.5 LTS (kernel 6.8.0-94-generic) |
 | Host Driver | ROCm 6.3 kernel driver |
 | Container | ROCm 7.0.2 userspace |
+| llama.cpp | build 1, commit [`05fa625`](https://github.com/ggml-org/llama.cpp/commit/05fa625) (2026-02-16) |
 
 > **PCIe topology note:** GPU1 connects through the PCH's DMI 3.0 bus (1.25 GB/s), which severely penalizes Tensor Parallelism (25-41% speed loss). However, **Pipeline Parallelism** (`--split-mode layer`) only transfers ~8KB activations per token, so the DMI bottleneck has negligible impact.
 
@@ -174,6 +175,25 @@ command:
 | `--no-mmap` | Direct file read instead of memory-mapping (use when system RAM < model file size) |
 | `--n-gpu-layers 999` | Offload all layers to GPU |
 | `HSA_OVERRIDE_GFX_VERSION=9.0.6` | Tell ROCm runtime this is a gfx906 device |
+
+## Updating llama.cpp
+
+The Dockerfile pins llama.cpp to a tested commit for stability. To build with the latest version:
+
+```bash
+docker compose build --build-arg LLAMA_CPP_COMMIT=HEAD
+```
+
+Or edit the `ARG LLAMA_CPP_COMMIT` line in the Dockerfile to a newer commit hash.
+
+## Compatibility
+
+This fix applies to all **gfx906** devices:
+
+| GPU | VRAM | Status |
+|-----|------|--------|
+| AMD Instinct MI50 | 32GB / 16GB | Tested |
+| AMD Radeon VII | 16GB | Compatible (same gfx906 chip) |
 
 ## License
 

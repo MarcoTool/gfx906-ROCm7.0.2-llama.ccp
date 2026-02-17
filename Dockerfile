@@ -6,8 +6,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Clone and build llama.cpp (against 7.0.2 headers/libs for correct ABI)
-RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp && \
-    cd /tmp/llama.cpp && \
+# Pinned to tested commit for stability. To use latest:
+#   replace the two lines below with: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp
+ARG LLAMA_CPP_COMMIT=05fa625eac5bbdbe88b43f857156c35501421d6e
+RUN git clone https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp && \
+    cd /tmp/llama.cpp && git checkout ${LLAMA_CPP_COMMIT} && \
     HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
     cmake -S . -B build \
       -DGGML_HIP=ON \
