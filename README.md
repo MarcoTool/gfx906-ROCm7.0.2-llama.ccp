@@ -174,16 +174,6 @@ command:
 | `--n-gpu-layers 999` | Offload all layers to GPU |
 | `HSA_OVERRIDE_GFX_VERSION=9.0.6` | Tell ROCm runtime this is a gfx906 device |
 
-## What Doesn't Work
-
-These approaches were tried and **do NOT fix** the SOLVE_TRI issue:
-
-| Approach | Why it fails |
-|----------|-------------|
-| Copy only `*gfx906*` TensileLibrary files from 6.3 | 7.0.2's `librocblas.so` runtime can't use 6.3's Tensile format — the index and code object layout changed between versions |
-| Replace entire TensileLibrary directory (with .dat index) | TRSM kernels are embedded in `librocblas.so` itself, not in TensileLibrary files — replacing external data doesn't affect the compiled-in device code |
-| `--override-tensor ssm_=CPU` | Only moves weight storage to CPU; the compute graph still dispatches SOLVE_TRI to GPU because input activations come from GPU ops |
-
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
