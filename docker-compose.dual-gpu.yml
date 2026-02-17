@@ -1,0 +1,34 @@
+# Dual GPU Pipeline Parallelism — for large/SSM models (Qwen3-Next-80B, Jamba, etc.)
+# Tested: Qwen3-Next-80B-A3B Q4_K_S @ 25 tok/s on 2x MI50 32GB (V420, 140W cap)
+# Requires the rocBLAS 6.3 patch in Dockerfile for SSM/Mamba SOLVE_TRI support.
+services:
+  llama:
+    build: .
+    container_name: llama-server
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+    shm_size: "16g"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./model:/model
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=9.0.6
+      - HSA_XNACK=0
+      - HIP_VISIBLE_DEVICES=0,1
+    command:
+      - --model
+      - /model/Qwen3-Next-80B-A3B-Instruct-Q4_K_S.gguf
+      - --port
+      - "8080"
+      - --host
+      - "0.0.0.0"
+      - --n-gpu-layers
+      - "999"
+      - --split-mode
+      - layer
+      - --no-mmap
+    restart: unless-stopped

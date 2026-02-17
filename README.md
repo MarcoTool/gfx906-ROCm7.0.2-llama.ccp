@@ -47,14 +47,28 @@ ln -sf $(readlink -f /opt/rocm/lib/libamdhip64.so) /opt/rocm/lib/libamdhip64.so.
 
 ## Hardware Tested
 
-- 2x AMD Instinct MI50 32GB (V420 VBIOS, 140W power cap)
-- GPU0: PCIe x16 Gen3, GPU1: PCIe x4 via DMI 3.0
-- Pipeline Parallelism (PP) with `--split-mode layer`
-- ROCm 6.3 kernel driver, ROCm 7.0.2 Docker userspace
+| Component | Spec |
+|-----------|------|
+| GPU | 2x AMD Instinct MI50 32GB |
+| VBIOS | V420 (Vega 20 server variant) |
+| Power Cap | 140W per GPU |
+| GPU0 Bus | PCIe x16 Gen3 (16 GB/s) |
+| GPU1 Bus | PCIe x4 via DMI 3.0 (1.25 GB/s) |
+| P2P | Not available (Small BAR, different root complex) |
+| System RAM | 31GB DDR4 + 16GB swap |
+| Storage | 457GB NVMe SSD |
+| Host Driver | ROCm 6.3 kernel driver |
+| Container | ROCm 7.0.2 userspace |
+
+> **PCIe topology note:** GPU1 connects through the PCH's DMI 3.0 bus (1.25 GB/s), which severely penalizes Tensor Parallelism (25-41% speed loss). However, **Pipeline Parallelism** (`--split-mode layer`) only transfers ~8KB activations per token, so the DMI bottleneck has negligible impact.
 
 ## Benchmark Results
 
-### Qwen3-Next-80B-A3B-Instruct Q4_K_S (dual GPU PP)
+All benchmarks conducted on MI50 32GB with V420 VBIOS and 140W power cap per GPU.
+
+### Qwen3-Next-80B-A3B-Instruct Q4_K_S — Dual GPU PP
+
+`docker-compose.dual-gpu.yml` | GPU0: 22.5GB VRAM, GPU1: 20.6GB VRAM
 
 | Context | Prompt Speed | Generation Speed |
 |---------|-------------|-----------------|
@@ -65,9 +79,11 @@ ln -sf $(readlink -f /opt/rocm/lib/libamdhip64.so) /opt/rocm/lib/libamdhip64.so.
 
 - Tool calling: working (single-tool, multi-tool response integration)
 - Generation speed stable across context lengths (SSM architecture benefit)
-- VRAM: GPU0 ~22.5GB, GPU1 ~20.6GB
+- Requires rocBLAS 6.3 patch for SOLVE_TRI
 
-### GLM-4.7-Flash Q4_K_M (single GPU, no rocBLAS patch needed)
+### GLM-4.7-Flash Q4_K_M — Single GPU
+
+`docker-compose.single-gpu.yml` | GPU0: ~17.3GB VRAM
 
 | Context | Prompt Speed | Generation Speed |
 |---------|-------------|-----------------|
@@ -76,40 +92,87 @@ ln -sf $(readlink -f /opt/rocm/lib/libamdhip64.so) /opt/rocm/lib/libamdhip64.so.
 | ~4K     | 557 tok/s   | 50.8 tok/s      |
 | ~8K     | 394 tok/s   | 47.5 tok/s      |
 
+- Tool calling: working (single-tool, multi-tool, tool response integration)
+- No rocBLAS patch needed (pure attention model, no SOLVE_TRI)
+
+### Comparison
+
+| Model | Active Params | GPUs | Gen Speed | Needs rocBLAS Fix |
+|-------|--------------|------|-----------|-------------------|
+| GLM-4.7-Flash Q4_K_M | 3B (MoE) | 1x MI50 | 57 tok/s | No |
+| Qwen3-Next-80B-A3B Q4_K_S | 3B (MoE+SSM) | 2x MI50 PP | 25 tok/s | **Yes** |
+
 ## Usage
 
-### Quick Start
+### Build
+
+```bash
+docker compose build
+```
+
+### Run — Single GPU
+
+For attention-only models (GLM-4.7-Flash, Qwen3, LLaMA, Mistral, etc.):
 
 ```bash
 # Place your GGUF model in ./model/
+cp docker-compose.single-gpu.yml docker-compose.yml
 docker compose up -d
+```
 
-# Check logs
+### Run — Dual GPU Pipeline Parallelism
+
+For large models or SSM/Mamba models (Qwen3-Next-80B, Jamba, etc.):
+
+```bash
+cp docker-compose.dual-gpu.yml docker-compose.yml
+docker compose up -d
+```
+
+### Monitor
+
+```bash
 docker compose logs -f
 ```
 
-### docker-compose.yml Configuration
+## Configuration Reference
 
-Edit `docker-compose.yml` to change the model, GPU assignment, and parameters:
+### Single GPU (`docker-compose.single-gpu.yml`)
 
 ```yaml
 environment:
-  - HIP_VISIBLE_DEVICES=0,1  # 0 for single GPU, 0,1 for dual GPU PP
+  - HIP_VISIBLE_DEVICES=0          # Use GPU0 only
+command:
+  - --model
+  - /model/your-model.gguf
+  - --n-gpu-layers
+  - "999"                           # Offload all layers to GPU
+```
+
+### Dual GPU PP (`docker-compose.dual-gpu.yml`)
+
+```yaml
+environment:
+  - HIP_VISIBLE_DEVICES=0,1        # Use both GPUs
 command:
   - --model
   - /model/your-model.gguf
   - --n-gpu-layers
   - "999"
   - --split-mode
-  - layer        # Pipeline Parallelism for dual GPU
-  - --no-mmap    # Recommended when system RAM < model size
+  - layer                           # Pipeline Parallelism
+  - --no-mmap                       # Avoid swap thrashing if RAM < model size
 ```
 
-### Notes
+### Key Parameters
 
-- `--no-mmap` is recommended when system RAM is less than the model file size, to avoid swap thrashing during loading
-- For SSM models (Qwen3-Next, etc.), the rocBLAS 6.3 patch is required
-- For pure attention models (GLM, Qwen3, LLaMA, etc.), only the TensileLibrary patch is needed (but using the full fix is harmless)
+| Parameter | Description |
+|-----------|-------------|
+| `HIP_VISIBLE_DEVICES` | `0` for single GPU, `0,1` for dual GPU |
+| `--split-mode layer` | Pipeline Parallelism (required for dual GPU with DMI bottleneck) |
+| `--no-mmap` | Direct file read instead of memory-mapping (use when system RAM < model file size) |
+| `--n-gpu-layers 999` | Offload all layers to GPU |
+| `HSA_OVERRIDE_GFX_VERSION=9.0.6` | Tell ROCm runtime this is a gfx906 device |
 
 ## What Doesn't Work
 
@@ -125,4 +188,4 @@ These approaches were tried and **do NOT fix** the SOLVE_TRI issue:
 
 ## License
 
-The Dockerfile and docker-compose.yml are provided as-is. llama.cpp is licensed under MIT.
+MIT License. See [LICENSE](LICENSE) for details.
