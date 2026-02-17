@@ -57,6 +57,7 @@ ln -sf $(readlink -f /opt/rocm/lib/libamdhip64.so) /opt/rocm/lib/libamdhip64.so.
 | P2P | Not available (Small BAR, different root complex) |
 | System RAM | 31GB DDR4 + 16GB swap |
 | Storage | 457GB NVMe SSD |
+| OS | Ubuntu 22.04.5 LTS (kernel 6.8.0-94-generic) |
 | Host Driver | ROCm 6.3 kernel driver |
 | Container | ROCm 7.0.2 userspace |
 
