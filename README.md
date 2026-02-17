@@ -101,6 +101,15 @@ All benchmarks conducted on MI50 32GB with V420 VBIOS and 140W power cap per GPU
 | GLM-4.7-Flash Q4_K_M | 3B (MoE) | 1x MI50 | 57 tok/s | No |
 | Qwen3-Next-80B-A3B Q4_K_S | 3B (MoE+SSM) | 2x MI50 PP | 25 tok/s | **Yes** |
 
+## Prerequisites
+
+The host machine needs:
+
+- **amdgpu kernel driver** (provides `/dev/kfd` and `/dev/dri`)
+- **Docker** with compose plugin
+
+ROCm userspace is fully contained in the Docker image. No host-side ROCm installation required.
+
 ## Usage
 
 ### Build
